@@ -1,0 +1,463 @@
+openapi: 3.0.3
+info:
+  title: Ranking Service API - OpenAPI 3.0
+  description: |-
+    This is the API documentation for the ranking service.
+  version: 1.0.0
+servers:
+  - url: https://ranking.2peaks.ca/api/v1
+tags:
+  - name: applicant
+    description: Everything about applicants
+paths:
+  /applicants:
+    get:
+      tags:
+        - applicant
+      summary: Find all applicants by the year and semester. Filter by whether the applicant has been approved, rejected, or undecided.
+      description: Applicants returned will be ranked from higest to lowest.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: year
+          in: query
+          description: The year. An example is 2020.
+          required: true
+          schema:
+            type: number
+        - name: semester
+          in: query
+          description: The semester.
+          required: true
+          schema:
+            type: string
+            enum:
+              - fall
+              - spring
+              - summer
+        - name: status
+          in: query
+          description: The applicant status. Can be approved, rejected, or left empty which will be the default (Applicants who are not rejected or approved yet).
+          schema:
+            type: string
+            default: default
+            enum:
+              - default
+              - approved
+              - rejected
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Applicant"
+        "400":
+          description: Invalid year or semester
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          description: Something went wrong
+    post:
+      tags:
+        - applicant
+      summary: Add an applicant.
+      description: Data that is sent from the student portal will be sent to the ranking service which will analyze and rank the student.
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: Created an applicant.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicantRequestBody"
+
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Applicant"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          description: Something went wrong
+  /applicants/{applicantId}:
+    get:
+      tags:
+        - applicant
+      summary: Find applicant by id.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: applicantId
+          in: path
+          required: true
+          description: The id of the applicant that needs to be fetched
+          schema:
+            type: number
+            example: 1
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Applicant"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          description: Applicant not found
+        "500":
+          description: Something went wrong
+    put:
+      tags:
+        - applicant
+      summary: Edit an applicant by id.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: applicantId
+          in: path
+          required: true
+          description: The id of the applicant that needs to be fetched
+          schema:
+            type: number
+            example: 1
+      requestBody:
+        description: Edit an applicant by id
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicantRequestBody"
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Applicant"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          description: Applicant not found
+        "500":
+          description: Something went wrong
+  /applicants/{applicantId}/decision:
+    post:
+      tags:
+        - applicant
+      summary: Make a decision on an applicant.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: applicantId
+          in: path
+          required: true
+          description: The id of the aplicant that needs to be accepted or rejected
+          schema:
+            type: number
+            example: 1
+        - name: decision
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - accept
+              - decline
+      responses:
+        "201":
+          description: Successful operation
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          description: Applicant not found
+        "500":
+          description: Something went wrong
+  /authenticate:
+    post:
+      summary: Authenticate admission managerment system user.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                client_id:
+                  type: string
+                  description: The client id
+                client_secret:
+                  type: string
+                  description: The client secret
+                redirect_uri:
+                  type: string
+                  description: Where to redirect after authentication
+      responses:
+        "200":
+          description: Successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: The JWT auth token
+        "401":
+          description: Unauthorized
+        "404":
+          description: applicant not found
+        "500":
+          description: Something went wrong
+components:
+  responses:
+    UnauthorizedError:
+      description: Access token is missing or invalid
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ApplicantRequestBody:
+      type: object
+      properties:
+        firstName:
+          type: string
+          example: Bob
+        lastName:
+          type: string
+          example: Smith
+        age:
+          type: number
+          example: 20
+        occupation:
+          type: string
+          example: cashier
+        city:
+          type: string
+          example: Burnaby
+        provice:
+          type: string
+          example: British Columbia
+        country:
+          type: string
+          example: Canada
+        education:
+          type: array
+          items:
+            $ref: "#/components/schemas/Education"
+        responces:
+          type: array
+          items:
+            $ref: "#/components/schemas/Responce"
+    Applicant:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 10
+        firstName:
+          type: string
+          example: Bob
+        lastName:
+          type: string
+          example: Smith
+        age:
+          type: number
+          example: 20
+        occupation:
+          type: string
+          example: cashier
+        city:
+          type: string
+          example: Burnaby
+        provice:
+          type: string
+          example: British Columbia
+        country:
+          type: string
+          example: Canada
+        bio:
+          type: string
+          example: Bob smith is a hard-working high school student.
+        education:
+          type: array
+          items:
+            $ref: "#/components/schemas/Education"
+        personality:
+          $ref: "#/components/schemas/Personality"
+        interests:
+          type: array
+          items:
+            $ref: "#/components/schemas/Interest"
+        influences:
+          type: array
+          items:
+            $ref: "#/components/schemas/Influence"
+        goals:
+          type: array
+          items:
+            $ref: "#/components/schemas/Goal"
+        needsAndExpectations:
+          type: array
+          items:
+            $ref: "#/components/schemas/NeedAndExpectation"
+        motivations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Motivation"
+        painPointsAndFrustrations:
+          type: array
+          items:
+            $ref: "#/components/schemas/PainPointAndFrustration"
+    Personality:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: integer
+          example: 10
+        introvertExtrovertScale:
+          type: integer
+          format: integer
+          example: 25
+        analyiticalCreativeScale:
+          type: integer
+          format: integer
+          example: 30
+        busyTimeRichScale:
+          type: integer
+          format: integer
+          example: 80
+        messyOrganizedScale:
+          type: integer
+          format: integer
+          example: 50
+        independentDependentScale:
+          type: integer
+          format: integer
+          example: 10
+        passiveActiveScale:
+          type: integer
+          format: integer
+          example: 5
+        safeRiskyScale:
+          type: integer
+          format: integer
+          example: 73
+    Education:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: integer
+          example: 1
+        level:
+          type: string
+          format: string
+          example: High School
+        name:
+          type: string
+          format: string
+          example: Burnaby High
+        grades:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 1
+              subject:
+                type: string
+                example: Math 12
+              grade:
+                type: string
+                example: 89.5
+    Responce:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        question:
+          type: string
+          example: What is one challenge you had to overcome?
+        answer:
+          type: string
+          example: Solving a dispute between coworkers.
+    Interest:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: integer
+          example: 1
+        description:
+          type: string
+          format: string
+          example: High School
+    Influence:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: integer
+          example: 1
+        description:
+          type: string
+          format: string
+          example: Involved in many school clubs
+    Goal:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: integer
+          example: 1
+        description:
+          type: string
+          format: string
+          example: Learn Python
+    NeedAndExpectation:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: integer
+          example: 1
+        description:
+          type: string
+          format: string
+          example: High School Scholarship
+    Motivation:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: integer
+          example: 1
+        description:
+          type: string
+          format: string
+          example: Passion for Computer Science
+    PainPointAndFrustration:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: integer
+          example: 1
+        description:
+          type: string
+          format: string
+          example: Not very good at writing
